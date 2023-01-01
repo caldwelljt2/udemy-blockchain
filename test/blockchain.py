@@ -1,4 +1,4 @@
-blockchain = [0]
+blockchain = []
 
 print(blockchain)
 
@@ -23,7 +23,14 @@ def add_value(transaction_amount):
 # add_value(1.4)
 
 def get_user_input():
-    return float(input('what about do you wish to add to the blockchain?'))
+    transaction_amount = input('what about do you wish to add to the blockchain?')
+    try:
+        return float(transaction_amount)
+    except:
+        get_user_input()
+        # print('your blockchain was corrupted with an unusable value')
+        # return None 
+        
 
 add_value(get_user_input())
 add_value(get_user_input())
