@@ -1,19 +1,26 @@
 # Assignment 58 from class
-# My current method for removing items is wrong, can't modify a list while iterating
+
+from faker import Faker
+fake = Faker()
 
 def load_names():
     global names
-    names = ['Alice', 'Bob', 'Charlie', 'Dave', 'Eve', 'Frank', 'Grace', 'Hannah', 'Isabella', 'Jake', 'Kate', 'Liam', 'Molly', 'Noah', 'Olivia', 'Patrick', 'Quinn', 'Rachel', 'Sarah', 'Tom']
+    names = []
+    for i in range(30):
+        name = fake.first_name()
+        names.append(name)
+    # names = ['Alice', 'Bob', 'Charlie', 'Dave', 'Eve', 'Frank', 'Grace', 'Hannah', 'Isabella', 'Jake', 'Kate', 'Liam', 'Molly', 'Noah', 'Olivia', 'Patrick', 'Quinn', 'Rachel', 'Sarah', 'Tom']
 
 def show_options():
     print("""Assingment 58 has three tasks to run
-          1. Load original list of names
-          2. Output the length of each name
-          3. Remove names only if greater than 5
-          4. Remove only names containing 'n' or 'N'
+          0. Load random list of names
+          1. Output the length of each name
+          2. Remove names only if greater than 5
+          3. Remove only names containing 'n' or 'N'
+          4. Remove remaining names using .pop() and while
           ----------------------------------------------------------------
-          5. Show options again
-          6. Show names as python list
+          5. Show names as python list
+          6. Show options again
           7. Quit
           """)
 
@@ -25,28 +32,35 @@ load_names()
 
 
 while True:
-    answer = input('Which do you want to do? ')
-    if answer == '1':
+    answer = input('Which do you want to do (m for menu)? ')
+    if answer == '0':
         load_names()
-    if answer == '2':
+        print('Loading...')
+        print(names)
+    if answer == '1':
         for name in names:
             print(f'{name} is {len(name)} characters')
-    if answer == '3':
+    if answer == '2':
         new_names = names
-        for name in names:
+        for name in list(names):
             if len(name) > 5:
                 print(f'{name} is {len(name)} characters, removing')
                 new_names.remove(name)
         names = new_names
-    if answer == '4':
+    if answer == '3':
         for name in names:
-            if 'n' in name or 'N' in name:
+            if 'n' in name or 'N' in list(name):
                 print(f"{name} contains the letter 'n' and was removed")
                 names.remove(name)
-    if answer == '5':
-        show_options()
-    if answer == '6':
+    if answer == '4':
+        while len(names) > 0:
+            print(f'removing {names.pop()} from list using .pop()')
+        print('This is what is left:')
         print(names)
+    if answer == '5':
+        print(names)
+    if answer in ['6','m','M']:
+        show_options()
     if answer in ['7','q','Q']:
         break
 
