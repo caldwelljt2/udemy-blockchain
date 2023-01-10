@@ -15,6 +15,8 @@ blockchain = [genisis_block]
 open_transactions = []
 owner = 'Jonathan'
 difficulty = 5 # must manually rehash genisis block if changed
+participants = set()
+reward = 50.0
 
 def read_blockchain():
     # global blockchain
@@ -44,7 +46,7 @@ def get_last_blockchain_value():
         return [0]
 
 
-def add_transaction(sender, recipient, amount=1.0):
+def add_transaction(sender, recipient, amount=0.0):
     """ add a transaction to the blockchain
 
     Arguments:
@@ -57,12 +59,13 @@ def add_transaction(sender, recipient, amount=1.0):
         "recipient": recipient,
         "amount": amount
     }
-    print(transaction)
+    # print(transaction)
     open_transactions.append(transaction)
     # blockchain.append([get_last_blockchain_value(), transaction_amount])
 
 
-def mine_block(open_transactions, blockchain):
+def mine_block(open_transactions, blockchain, miner = 'Jon'):
+    global reward
     leading_zeros = difficulty * "0"
     # for transaction in open_transactions:
     # insert various checks for validity of amounts
@@ -98,10 +101,15 @@ def mine_block(open_transactions, blockchain):
     print(f"Hash: {this_block_as_hash}")
         
     # we could also hash the contents of the block now and add or increment a nonce till we get leading 0s
+    
 
     blockchain.append(block)
+    
+    # Pay the miner
+    print(f"paying the miner, {miner} the mining fee of {reward}")
+    add_transaction('Mining_Rewards', miner, reward)
+    
     return blockchain
-    pass
 
 
 def get_user_input():
@@ -109,22 +117,51 @@ def get_user_input():
     return input('Please choose: ')
 
 
-def get_recipient_and_value():
-    """ gets user input recursivly until input is valid for return"""
+def get_transaction_values():
+    """ gets user input for receipient and value and returns them"""
     while True:
-        transaction_recipient = input('Who are you sending to? ')
-        transaction_amount = input('How much are you sending? (q to cancel): ')
-        if transaction_amount == 'q' or transaction_amount.casefold() in ['q', 'done', 'quit', 'cancel']:
+        transaction_sender = input('Sender: ')
+        transaction_recipient = input('Recipient: ')
+        transaction_amount = input('Amount / (C)ancel: ')
+        if transaction_amount == 'q' or transaction_amount.casefold() in ['c', 'q', 'done', 'quit', 'cancel']:
             return 'done'
         else:
             try:
-                return transaction_recipient, float(transaction_amount)
+                return transaction_sender, transaction_recipient, float(transaction_amount)
             except:
-                print(
-                    "Invalid input, try again (Check the amount is a usable number... )")
+                print("Invalid input, try again (Check the amount is a usable number... )")
                 continue
             # break
 
+def get_participants(blockchain):
+    global participants
+    for i, block in enumerate(blockchain):
+        # print(f'Block {i}: {block}')
+        for transaction in block['transactions']:
+            # print(transaction)
+            participants.add(transaction['sender'])
+            participants.add(transaction['recipient'])
+    return participants          
+
+def get_balance(participant):
+    balance = 0.0
+    for i, block in enumerate(blockchain):
+        for transaction in block['transactions']:
+            if transaction['sender'] == participant: # and transaction['sender'] != 'Mining_Rewards':
+                balance -= transaction['amount']
+            if transaction['recipient'] == participant: # and transaction['sender'] != 'Mining_Rewards':
+                balance += transaction['amount']
+    if balance < 0 and participant != 'Mining_Rewards':
+        print(f'Block {i} shows a balance dropping below 0 for {participant}, this isn\'t possible (allowed for now')
+        print(f'Full block (for debugging): {block}')
+    if participant == 'Mining_Rewards':
+        global reward
+        number_of_previous_blocks = (len(blockchain) - 1)
+        rewards_paid_so_far = number_of_previous_blocks * reward
+        print(f'The blockchain has paid recorded {balance * -1} paid as mining rewards')
+        print(f'The rules say it should have paid out {rewards_paid_so_far}')
+        return 0
+    return balance
 
 def display_blockchain(blockchain):
     print(blockchain)
@@ -212,15 +249,18 @@ while waiting_for_input:
     4. Load/Save the blockchain
     5. Verify Blockchain
     6. Mine Transaction to blockchain
+    7. Get Participants
+    8. Get all Balances (must load all participants first)
     Q. (Q)uit session""")
     answer = get_user_input()
     if answer == '1':
-        receipient_and_amount = get_recipient_and_value()
-        recipient = receipient_and_amount[0]
-        amount = receipient_and_amount[1]
+        receipient_and_amount = get_transaction_values()
+        sender = receipient_and_amount[0]
+        recipient = receipient_and_amount[1]
+        amount = receipient_and_amount[2]
         if receipient_and_amount != 'done':
             # break
-            add_transaction(owner, recipient, amount)
+            add_transaction(sender, recipient, amount)
 
     elif answer == '2':
         print('this is the entire blockchain:')
@@ -253,6 +293,15 @@ while waiting_for_input:
     elif answer == '6':
         blockchain = mine_block(open_transactions, blockchain)
         open_transactions = []
+        
+    elif answer == '7':
+        print('was: ', participants)
+        participants = get_participants(blockchain)
+        print('now: ', participants)
+        
+    elif answer == '8':
+        for participant in participants:
+            print(f"{participant} has {get_balance(participant)}")
 
     elif answer in ['q', 'Q']:
         is_sure = input('Are you sure - UNSAVED changes will be LOST (y/N): ')
