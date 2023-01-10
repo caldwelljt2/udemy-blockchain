@@ -46,7 +46,7 @@ def get_last_blockchain_value():
         return [0]
 
 
-def add_transaction(sender, recipient, amount=0.0):
+def add_transaction(open_transactions, sender, recipient, amount=0.0):
     """ add a transaction to the blockchain
 
     Arguments:
@@ -54,6 +54,7 @@ def add_transaction(sender, recipient, amount=0.0):
         :recipient: The recipient of the coins.
         :amount: The amount of coins sent with the transaction (default = 1.0)
     """
+    # global open_transactions
     transaction = {
         "sender": sender,
         "recipient": recipient,
@@ -61,16 +62,33 @@ def add_transaction(sender, recipient, amount=0.0):
     }
     # print(transaction)
     open_transactions.append(transaction)
+    print(open_transactions)
+    pass
     # blockchain.append([get_last_blockchain_value(), transaction_amount])
+    return open_transactions
 
 
 def mine_block(open_transactions, blockchain, miner = 'Jon'):
+    """Mines the block in open_transactions on to the blockchain and returns it,
+    paying the miner in the next future block.
+
+    Args:
+        open_transactions (list): the mempool of open transactions to mine
+        blockchain (list)): The blockchain
+        miner (str, optional): The miner attempting to mine this block. Defaults to 'Jon'.
+
+    Returns:
+        (tuple): A tuple containing the updated blockchain and a fresh open_transaction list with a transaction for the miner being paid for his work.
+    """
+    
+    transactions_to_add = open_transactions
+    
     global reward
     leading_zeros = difficulty * "0"
-    # for transaction in open_transactions:
+    # for transaction in transactions_to_add:
     # insert various checks for validity of amounts
     #     pass
-    if open_transactions == []:
+    if transactions_to_add == []:
         print("please submit a transaction first!!!")
         return blockchain
     previous_block = blockchain[-1]
@@ -84,7 +102,7 @@ def mine_block(open_transactions, blockchain, miner = 'Jon'):
     block = {
         'previous_hash': previous_block_as_hash,
         'index': index_of_this_Block,
-        'transactions': open_transactions,
+        'transactions': transactions_to_add,
         'nonce': nonce
     }
 
@@ -93,6 +111,10 @@ def mine_block(open_transactions, blockchain, miner = 'Jon'):
         # this_block_as_hash = hashlib.sha256(this_block_as_string.encode()).hexdigest()
         this_block_as_hash = hash_block(block)
         if this_block_as_hash.startswith(leading_zeros):
+            # print('*'*20)
+            # print(f"Block at nonce {block['nonce']}")
+            # print(f"produced hash ")
+            # print('*'*20)
             passes_check = True
         else:
             block['nonce'] += 1
@@ -104,12 +126,12 @@ def mine_block(open_transactions, blockchain, miner = 'Jon'):
     
 
     blockchain.append(block)
-    
+    transactions_to_add = []
     # Pay the miner
     print(f"paying the miner, {miner} the mining fee of {reward}")
-    add_transaction('Mining_Rewards', miner, reward)
+    transactions_to_add = add_transaction(transactions_to_add, 'Mining_Rewards', miner, reward)
     
-    return blockchain
+    return transactions_to_add, blockchain
 
 
 def get_user_input():
@@ -214,6 +236,7 @@ def verify_blockchain(blockchain):
                 continue
         if i > 0:
             # print(i,'/', block[0],'/',blockchain[i-1])
+            this_block_hashed = hash_block(block)
             
             
             previous_block_as_string = json.dumps(blockchain[i-1])
@@ -260,7 +283,7 @@ while waiting_for_input:
         amount = receipient_and_amount[2]
         if receipient_and_amount != 'done':
             # break
-            add_transaction(sender, recipient, amount)
+            open_transaction = add_transaction(open_transactions, sender, recipient, amount)
 
     elif answer == '2':
         print('this is the entire blockchain:')
@@ -291,8 +314,8 @@ while waiting_for_input:
         verify_blockchain(blockchain)
 
     elif answer == '6':
-        blockchain = mine_block(open_transactions, blockchain)
-        open_transactions = []
+        open_transactions, blockchain = mine_block(open_transactions, blockchain)
+        #  = []
         
     elif answer == '7':
         print('was: ', participants)
