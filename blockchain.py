@@ -19,15 +19,24 @@ participants = set()
 reward = 50.0
 
 def read_blockchain():
-    # global blockchain
+    """Read's blockchain from save_blockchain.txt
+
+    Returns:
+        list: The blockchain
+    """
     data = open('save_blockchain.txt', 'r').read()
 
-    # Deserialize the JSON string and restore the list
+    # Deserialize the JSON string and return as list
     return json.loads(data)
-    # data.close()
 
 
 def write_blockchain(blockchain):
+    """ Writes blockchain to disk
+
+    Arguments:
+        :blockchain (list): The blockchain as list
+    """
+        
     # Serialize the blockchain list as a JSON string
     data = json.dumps(blockchain)
     # Open the file for writing
@@ -38,11 +47,9 @@ def write_blockchain(blockchain):
 
 def get_last_blockchain_value():
     """ returns the last blockchain value or [0] if none exists"""
-    # global blockchain
     try:
         return blockchain[-1]
     except:
-        # blockchain = [[None]]
         return [0]
 
 
@@ -54,26 +61,24 @@ def add_transaction(open_transactions, sender, recipient, amount=0.0):
         :recipient: The recipient of the coins.
         :amount: The amount of coins sent with the transaction (default = 1.0)
     """
-    # global open_transactions
+
     transaction = {
         "sender": sender,
         "recipient": recipient,
         "amount": amount
     }
-    # print(transaction)
+
     open_transactions.append(transaction)
     print(open_transactions)
-    pass
-    # blockchain.append([get_last_blockchain_value(), transaction_amount])
     return open_transactions
 
 
-def mine_block(open_transactions, blockchain, miner = 'Jon'):
-    """Mines the block in open_transactions on to the blockchain and returns it,
+def mine_block(transactions, blockchain, miner = 'Jon', reward = 50.0):
+    """Mines the block in transactions on to the blockchain and returns it,
     paying the miner in the next future block.
 
     Args:
-        open_transactions (list): the mempool of open transactions to mine
+        transactions (list): the mempool of open transactions to mine
         blockchain (list)): The blockchain
         miner (str, optional): The miner attempting to mine this block. Defaults to 'Jon'.
 
@@ -81,40 +86,28 @@ def mine_block(open_transactions, blockchain, miner = 'Jon'):
         (tuple): A tuple containing the updated blockchain and a fresh open_transaction list with a transaction for the miner being paid for his work.
     """
     
-    transactions_to_add = open_transactions
-    
-    global reward
     leading_zeros = difficulty * "0"
-    # for transaction in transactions_to_add:
-    # insert various checks for validity of amounts
-    #     pass
-    if transactions_to_add == []:
+
+    if transactions == []:
         print("please submit a transaction first!!!")
         return blockchain
+
     previous_block = blockchain[-1]
     previous_block_as_hash = hash_block(previous_block)
-    # previous_block_as_string = json.dumps(blockchain[-1])
-    # previous_block_as_hash = hashlib.sha256(previous_block_as_string.encode()).hexdigest()
-    # previous_block_as_hash = hash_block(block)
     index_of_this_Block = len(blockchain)
     nonce = 0
     passes_check = False
+
     block = {
         'previous_hash': previous_block_as_hash,
         'index': index_of_this_Block,
-        'transactions': transactions_to_add,
+        'transactions': transactions,
         'nonce': nonce
     }
 
     while passes_check == False:
-        # this_block_as_string = json.dumps(block)
-        # this_block_as_hash = hashlib.sha256(this_block_as_string.encode()).hexdigest()
         this_block_as_hash = hash_block(block)
         if this_block_as_hash.startswith(leading_zeros):
-            # print('*'*20)
-            # print(f"Block at nonce {block['nonce']}")
-            # print(f"produced hash ")
-            # print('*'*20)
             passes_check = True
         else:
             block['nonce'] += 1
@@ -122,16 +115,17 @@ def mine_block(open_transactions, blockchain, miner = 'Jon'):
     print(f"it took {block['nonce']} tries to complete")
     print(f"Hash: {this_block_as_hash}")
         
-    # we could also hash the contents of the block now and add or increment a nonce till we get leading 0s
-    
-
+    # add block to end of chain
     blockchain.append(block)
-    transactions_to_add = []
-    # Pay the miner
-    print(f"paying the miner, {miner} the mining fee of {reward}")
-    transactions_to_add = add_transaction(transactions_to_add, 'Mining_Rewards', miner, reward)
     
-    return transactions_to_add, blockchain
+    # clear transactions
+    transactions = []
+
+    # Pay the miner by adding new transaction to be mined
+    print(f"paying the miner, {miner} the mining fee of {reward}")
+    transactions = add_transaction(transactions, 'Mining_Rewards', miner, reward)
+    
+    return transactions, blockchain
 
 
 def get_user_input():
@@ -153,29 +147,44 @@ def get_transaction_values():
             except:
                 print("Invalid input, try again (Check the amount is a usable number... )")
                 continue
-            # break
 
 def get_participants(blockchain):
+    """Goes through entire blockchain history and returns all participants as a list of participants
+
+    Args:
+        blockchain (list): Blockchain to scourge
+
+    Returns:
+        set: A set of all participants ever
+    """
     global participants
     for i, block in enumerate(blockchain):
-        # print(f'Block {i}: {block}')
         for transaction in block['transactions']:
-            # print(transaction)
             participants.add(transaction['sender'])
             participants.add(transaction['recipient'])
     return participants          
 
 def get_balance(participant):
+    """Steps through entire blockchain and gives a balance for the named participant
+
+    Args:
+        participant (string): Name or Address of participant
+
+    Returns:
+        float: A balance of transactions (also prints balance issues to terminal)
+    """
     balance = 0.0
     for i, block in enumerate(blockchain):
         for transaction in block['transactions']:
-            if transaction['sender'] == participant: # and transaction['sender'] != 'Mining_Rewards':
+            if transaction['sender'] == participant:
                 balance -= transaction['amount']
-            if transaction['recipient'] == participant: # and transaction['sender'] != 'Mining_Rewards':
+            if transaction['recipient'] == participant:
                 balance += transaction['amount']
+                
     if balance < 0 and participant != 'Mining_Rewards':
         print(f'Block {i} shows a balance dropping below 0 for {participant}, this isn\'t possible (allowed for now')
         print(f'Full block (for debugging): {block}')
+        
     if participant == 'Mining_Rewards':
         global reward
         number_of_previous_blocks = (len(blockchain) - 1)
@@ -186,6 +195,11 @@ def get_balance(participant):
     return balance
 
 def display_blockchain(blockchain):
+    """Prints blockchain and each block to the terminal
+
+    Args:
+        blockchain (list): Blockchain to display
+    """
     print(blockchain)
 
     print('-' * 23)
@@ -205,10 +219,15 @@ def display_blockchain(blockchain):
     if blockchain != [genisis_block]:
         print("Final block ", blockchain[-1])
     else:
-        print('Warning: NO INPUT ADDED (yet)!')
+        print('Warning: NO BLOCKS MINED (yet)!')
 
 
-def display_transactions(transaction):
+def display_transaction(transaction):
+    """Prints a transaction's information to the terminal
+
+    Args:
+        transaction (dict): A transaction dictionary
+    """
     print('Sender: ', transaction['sender'])
     print('recipient: ', transaction['recipient'])
     print('amount: ', transaction['amount'])
@@ -219,13 +238,19 @@ def hash_block(block):
 
 
 def verify_blockchain(blockchain):
+    """Steps through all blocks to verify they are valid (SHA256 Hashes)
+
+    Args:
+        blockchain (list): A blockchain to verify
+
+    Returns:
+        Bool: Returns True if valid (also prints errors to terminal)
+    """
     verified = False
     for i, block in enumerate(blockchain):
         print(blockchain)
         print(f'Block {i}: {block}')
         if i == 0:
-            # this_block_as_string = json.dumps(block)
-            # this_block_hashed = hashlib.sha256(this_block_as_string.encode()).hexdigest()
             this_block_hashed = hash_block(block)
             if this_block_hashed != genisis_hash:
                 print(f'First block\'s hash: "{this_block_hashed}" does not match genisis hash {genisis_hash} and is considered CORRUPTED!')
@@ -235,9 +260,7 @@ def verify_blockchain(blockchain):
                 verified = True
                 continue
         if i > 0:
-            # print(i,'/', block[0],'/',blockchain[i-1])
             this_block_hashed = hash_block(block)
-            
             
             previous_block_as_string = json.dumps(blockchain[i-1])
             previous_block_hashed = hashlib.sha256(previous_block_as_string.encode()).hexdigest()
@@ -282,7 +305,6 @@ while waiting_for_input:
         recipient = receipient_and_amount[1]
         amount = receipient_and_amount[2]
         if receipient_and_amount != 'done':
-            # break
             open_transaction = add_transaction(open_transactions, sender, recipient, amount)
 
     elif answer == '2':
@@ -293,7 +315,7 @@ while waiting_for_input:
         print('this is the open transactions (itemized): ')
         for i, transaction in enumerate(open_transactions):
             print(f'transaction {i+1}:')
-            display_transactions(transaction)
+            display_transaction(transaction)
             print('\n')
 
         print('open transactions in raw format:')
@@ -315,7 +337,6 @@ while waiting_for_input:
 
     elif answer == '6':
         open_transactions, blockchain = mine_block(open_transactions, blockchain)
-        #  = []
         
     elif answer == '7':
         print('was: ', participants)
