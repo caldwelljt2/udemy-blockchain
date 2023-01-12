@@ -299,6 +299,7 @@ def commit_transactions(blockchain, open_transactions, current_balances):
     valid_transactions = []
     for transaction in open_transactions:
         if current_balances[transaction['sender']] - transaction['amount'] >= 0:
+            current_balances.setdefault(transaction['sender'], 0)
             current_balances[transaction['sender']] -= transaction['amount']
             current_balances.setdefault(transaction['recipient'], 0)
             current_balances[transaction['recipient']] += transaction['amount']
@@ -336,15 +337,15 @@ waiting_for_input = True
 while waiting_for_input:
     print('\n')
     print("""Please choose one:
-    1. Add transaction amount to the blockchain
+    1. Add transaction amount pending transactions (open_transactions)
     2. Print entire blockchain
     3. Print open transactions
-    4. Load/Save the blockchain
+    4. Load/Save the blockchain (save_blockchain.txt)
     5. Verify Blockchain
-    6. Mine Transaction to blockchain
+    6. Mine ALL Transactions to blockchain
     7. Get Participants
     8. Get all Balances (must load all participants first)
-    9. Add only valid transactions to blockchain (no double spending)
+    9. Mine only valid transactions to blockchain (no double spending)
     Q. (Q)uit session""")
     answer = get_user_input()
     if answer == '1':
@@ -401,6 +402,9 @@ while waiting_for_input:
         if verify_blockchain(blockchain):
             valid_transactions = commit_transactions(blockchain, open_transactions, current_balances)
             print(valid_transactions)
+        
+        open_transactions, blockchain = mine_block(valid_transactions, blockchain)
+            
 
     elif answer in ['q', 'Q']:
         is_sure = input('Are you sure - UNSAVED changes will be LOST (y/N): ')
