@@ -284,6 +284,53 @@ def verify_blockchain(blockchain):
     return (verified)
 
 
+def commit_transactions(blockchain, open_transactions, current_balances):
+    """
+    Commit the valid transactions to the blockchain and update the current_balances dictionary.
+
+    Args:
+        blockchain (list): The blockchain to be updated
+        open_transactions (list): The list of open transactions to be included
+        current_balances (dict): A dictionary containing the current balances of each person
+
+    Returns:
+        list: A list of valid transactions that have been added to the blockchain
+    """
+    valid_transactions = []
+    for transaction in open_transactions:
+        if current_balances[transaction['sender']] - transaction['amount'] >= 0:
+            current_balances[transaction['sender']] -= transaction['amount']
+            current_balances.setdefault(transaction['recipient'], 0)
+            current_balances[transaction['recipient']] += transaction['amount']
+
+            valid_transactions.append(transaction)
+        else:
+            print(f"Transaction dropped: {transaction['sender']} has insufficient funds to send {transaction['amount']} to {transaction['recipient']}")
+    return valid_transactions
+
+def create_balances(blockchain):
+    """
+    Create a dictionary containing the current balances of each person based on the transactions in the blockchain.
+
+    Args:
+        blockchain (list): The blockchain to be verified
+
+    Returns:
+        dict: A dictionary containing the current balances of each person
+    """
+    current_balances = {}
+    for block in blockchain:
+        for transaction in block['transactions']:
+            if transaction['sender'] not in current_balances:
+                current_balances[transaction['sender']] = 0
+            if transaction['recipient'] not in current_balances:
+                current_balances[transaction['recipient']] = 0
+
+            current_balances[transaction['sender']] -= transaction['amount']
+            current_balances[transaction['recipient']] += transaction['amount']
+    return current_balances
+
+
 waiting_for_input = True
 
 while waiting_for_input:
@@ -297,6 +344,7 @@ while waiting_for_input:
     6. Mine Transaction to blockchain
     7. Get Participants
     8. Get all Balances (must load all participants first)
+    9. Add only valid transactions to blockchain (no double spending)
     Q. (Q)uit session""")
     answer = get_user_input()
     if answer == '1':
@@ -346,6 +394,13 @@ while waiting_for_input:
     elif answer == '8':
         for participant in participants:
             print(f"{participant} has {get_balance(participant)}")
+
+    elif answer == '9':
+        current_balances = create_balances(blockchain)
+
+        if verify_blockchain(blockchain):
+            valid_transactions = commit_transactions(blockchain, open_transactions, current_balances)
+            print(valid_transactions)
 
     elif answer in ['q', 'Q']:
         is_sure = input('Are you sure - UNSAVED changes will be LOST (y/N): ')
