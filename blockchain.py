@@ -1,3 +1,4 @@
+import os
 import json
 import hashlib
 
@@ -9,7 +10,8 @@ genisis_block = {
                 'transactions': [],
                 'nonce': 190395
             }
-genisis_hash = "00000868219e3eeffeb4d11f153d106980878ed4d0815b21e59cec73bbf377a7" # must be changed with difficulty change
+# genisis_hash = "00000868219e3eeffeb4d11f153d106980878ed4d0815b21e59cec73bbf377a7" # must be changed with difficulty change
+genisis_hash = "74309d444f424528e0a1e5bfd30392ed5ef48fe4671a2cc81a7fce292d0b5527"
 
 blockchain = [genisis_block]
 open_transactions = []
@@ -24,10 +26,22 @@ def read_blockchain():
     Returns:
         list: The blockchain
     """
-    data = open('save_blockchain.txt', 'r').read()
+    while True:
+
+        user_input = input("Please enter a filename (save_blockchain.txt or [Q]uit): ") or "save_blockchain.txt"
+
+        if user_input.casefold() in ['q', 'quit']:
+            return None
+
+        if os.path.isfile(user_input) and not os.path.isabs(user_input):
+            # user_input is a valid filename and is located in the local directory
+            data = open(user_input, 'r').read()
+            return json.loads(data)
+        else:
+            print("Invalid filename or not in local directory")
+            continue
 
     # Deserialize the JSON string and return as list
-    return json.loads(data)
 
 
 def write_blockchain(blockchain):
@@ -40,9 +54,25 @@ def write_blockchain(blockchain):
     # Serialize the blockchain list as a JSON string
     data = json.dumps(blockchain)
     # Open the file for writing
-    with open('save_blockchain.txt', 'w') as blockchain_file:
-        # Write the serialized list to the file
-        blockchain_file.write(data)
+
+    while True:
+        
+        user_input = input("Please enter a filename (save_blockchain.txt or [Q]uit): ") or "save_blockchain.txt"
+
+        if user_input.casefold() in ['q', 'quit']:
+            return None
+
+        if os.path.isfile(user_input) and not os.path.isabs(user_input):
+            # user_input is a valid filename and is located in the local directory
+            with open(user_input, 'w') as blockchain_file:
+                # Write the serialized list to the file
+                blockchain_file.write(data)
+                print("Blockchain saved to disk")
+            break   
+        else:
+            print("Invalid filename or not in local directory")
+            continue
+            
 
 
 def get_last_blockchain_value():
@@ -90,7 +120,7 @@ def mine_block(transactions, blockchain, miner = 'Jon', reward = 50.0):
 
     if transactions == []:
         print("please submit a transaction first!!!")
-        return blockchain
+        return transactions, blockchain
 
     previous_block = blockchain[-1]
     previous_block_as_hash = hash_block(previous_block)
@@ -102,7 +132,7 @@ def mine_block(transactions, blockchain, miner = 'Jon', reward = 50.0):
         'previous_hash': previous_block_as_hash,
         'index': index_of_this_Block,
         'transactions': transactions,
-        'nonce': nonce
+        'nonce': nonce``
     }
 
     while passes_check == False:
@@ -233,7 +263,7 @@ def display_transaction(transaction):
     print('amount: ', transaction['amount'])
 
 def hash_block(block):
-    this_block_as_string = json.dumps(block)
+    this_block_as_string = json.dumps(block, sort_keys=True)
     return hashlib.sha256(this_block_as_string.encode()).hexdigest()
 
 
@@ -270,6 +300,13 @@ def verify_blockchain(blockchain):
                 print(f'Block {i} = VERFIED (to contain a valid hash of Block {i-1}')
                 verified = True
                 continue
+                if previous_block_hashed.startswith('0000'):
+                    print(f'Block {i} = VERFIED (to contain a valid hash of Block {i-1}, and contains enough "0"s to be considered valid')
+                    verified = True
+                else:
+                    print(f"Block {i} = NOT-VERFIED (to contain a valid hash of Block {i-1}, not enough '0's to be considered valid")
+                    verified = False
+                    continue
             else:
                 print(f"Block {i}'s content's {block[0]}")
                 print(f"Does NOT MATCH block {i-1}'s contents of {blockchain[i-1]} - {previous_block_hashed})")
@@ -297,6 +334,7 @@ def commit_transactions(blockchain, open_transactions, current_balances):
         list: A list of valid transactions that have been added to the blockchain
     """
     valid_transactions = []
+    invalid_transactions = []
     for transaction in open_transactions:
         if current_balances[transaction['sender']] - transaction['amount'] >= 0:
             current_balances.setdefault(transaction['sender'], 0)
@@ -307,7 +345,8 @@ def commit_transactions(blockchain, open_transactions, current_balances):
             valid_transactions.append(transaction)
         else:
             print(f"Transaction dropped: {transaction['sender']} has insufficient funds to send {transaction['amount']} to {transaction['recipient']}")
-    return valid_transactions
+            invalid_transactions.append(transaction)
+    return valid_transactions, invalid_transactions
 
 def create_balances(blockchain):
     """
@@ -400,10 +439,13 @@ while waiting_for_input:
         current_balances = create_balances(blockchain)
 
         if verify_blockchain(blockchain):
-            valid_transactions = commit_transactions(blockchain, open_transactions, current_balances)
-            print(valid_transactions)
+            valid_transactions, invalid_transactions = commit_transactions(blockchain, open_transactions, current_balances)
         
         open_transactions, blockchain = mine_block(valid_transactions, blockchain)
+        open_transactions.extend(invalid_transactions)
+        
+        print('the following transactions were invalid and have been added back to the open_transactions list:')
+        print(open_transactions)
             
 
     elif answer in ['q', 'Q']:
